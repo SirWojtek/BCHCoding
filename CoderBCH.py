@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from BinaryNumber import *
+from Polynomial import *
 from copy import deepcopy
 
 class CoderBCH:
@@ -36,8 +36,8 @@ n - k:\t\t%d
 """ % (self._generator, self._m, self._n, self._k, self._nk)
 
 if __name__ == '__main__':
-	gen = BinaryNumber(0b10011)
-	info = BinaryNumber(0xA)
+	gen = Polynomial(0b10011)
+	info = Polynomial(0xA)
 	coder = CoderBCH(gen, 4)
 	print coder
 	msg = coder.encode(info)
