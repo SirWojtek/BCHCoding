@@ -1,6 +1,5 @@
 #!/usr/bin/python
 from Polynomial import *
-from copy import deepcopy
 import numpy
 
 class CoderBCH:
@@ -9,7 +8,7 @@ class CoderBCH:
         self._generator = generator
         self._m = m
         self._n = 2 ** m - 1;
-        self._nk = self._generator.getPolyDegree()
+        self._nk = self._generator.degree()
         self._k = self._n - self._nk
         self._t = t
 
@@ -19,40 +18,26 @@ class CoderBCH:
         return self._encode(info)
 
     def decode(self, info):
-        msg = self._decode(info)
-        msg.divideByX(self._nk)
-        return msg
+        return self._decode(info) / self._nk
 
     def _isEncodePossible(self, info):
-        return info.getPolyDegree() <= self._k
+        return info.degree() <= self._k
 
     def _encode(self, info):
-        encMessage = deepcopy(info)
-        encMessage.multiplyByX(self._nk)
-        remainder = encMessage.divideRemainder(self._generator)
-        encMessage.add(remainder)
-        return encMessage
+        encodedMsg = info*self._nk
+        return encodedMsg + (encodedMsg % self._generator)
 
     def _decode(self, info):
-        decMessage = deepcopy(info)
+        decodedMsg = info.copy()
         for i in range(self._k):
-            syndrome = decMessage.divideRemainder(self._generator)
-            hammingWeight = self._getHammingWeight(syndrome)
-            if hammingWeight <= self._t:
+            syndrome = decodedMsg % self._generator
+            if syndrome.hammingWeight() <= self._t:
                 print 'DECODE ITERATIONS: ' + str(i)
-                decMessage.add(syndrome)
-                decMessage.shiftLeft(i)
-                return decMessage
-            decMessage.shiftRight()
-        raise TypeError('Unable to correct errors for input message: ' + str(bin(info.getNumber())))
-
-
-    def _getHammingWeight(self, polynomial):
-        weight = 0
-        for bit in polynomial.getPoly():
-            if bit > 0:
-                weight += 1
-        return weight
+                decodedMsg = decodedMsg + syndrome
+                decodedMsg = decodedMsg << i
+                return decodedMsg
+            decodedMsg = decodedMsg >> 1
+        raise RuntimeError('Unable to correct errors for input message: ' + str(hex(info)))
 
     def __repr__(self):
         return """Coder parameters:
@@ -62,15 +47,20 @@ n:\t\t%d
 k:\t\t%d
 n - k:\t\t%d
 t:\t\t%d
-""" % (self._generator, self._m, self._n, self._k, self._nk, self._t)
+""" % (int(self._generator), self._m, self._n, self._k, self._nk, self._t)
 
-def addNoise(message, maxErrors):
-    poly = message.getPoly()
-    positions = numpy.random.randint(len(poly), size=maxErrors)
-    positions = list(set(positions))
+
+def addNoise(message, maxErrors, generatorDegree=None):
+    poly = message.copy()
+    if generatorDegree is not None:
+        positions = numpy.random.randint(generatorDegree, size=maxErrors)
+    else:
+        positions = numpy.random.randint(len(poly), size=maxErrors)
+    positions = sorted(list(set(positions)))
+    print 'NOISE_POSITIONS' + str(positions)
     for position in positions:
         poly[position] = int(not(poly[position]))
-    return Polynomial(poly=poly)
+    return poly
 
 
 if __name__ == '__main__':
@@ -83,13 +73,13 @@ if __name__ == '__main__':
     print 'INFO: ' + str(info)
     encodedMsg = coder.encode(info)
     print 'ENCODED: ' + str(encodedMsg)
-    #Have some problem with generate proper noise. 
-    noisedMsg = addNoise(encodedMsg, 4)
+    #Have some problem with generate proper noise.
+    noisedMsg = addNoise(encodedMsg, t, gen.degree())
     #noisedMsg = encodedMsg
     print 'NOISED: ' + str(noisedMsg)
     decodedMsg = coder.decode(noisedMsg)
     print 'DECODED: ' + str(decodedMsg)
-    if decodedMsg.getNumber() == info.getNumber():
+    if decodedMsg == info:
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'

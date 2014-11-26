@@ -1,67 +1,27 @@
 #!/usr/bin/python
+from numpy import roll
 from numpy.polynomial import polynomial
-import numpy
 
 class Polynomial:
 
     def __init__(self, number = 0, poly = None):
         if poly is not None:
             self._poly = poly
-            self._number = self._getNumberFromPoly(poly)
         else:
             self._poly = self._getPolynomial(number)
-            self._number = number
-            self._number = number
 
-    def getPoly(self):
-        return list(self._poly)
+    def degree(self):
+        return (len(self._poly) - 1) - self._poly[::-1].index(1)
 
-    def getNumber(self):
-        return self._number
+    def hammingWeight(self):
+        weight = 0
+        for bit in self._poly:
+            if bit > 0:
+                weight += 1
+        return weight
 
-    def divideRemainder(self, binaryNumber):
-        resultPoly = polynomial.polydiv(self._poly, binaryNumber._poly)[1]
-        resultPoly = self._normalizePoly(resultPoly, len(self._poly))
-
-        result = Polynomial()
-        result._number = self._getNumberFromPoly(resultPoly)
-        result._poly = resultPoly
-
-        return result
-
-    def getPolyDegree(self):
-        return len(self._poly) - 1
-
-    def multiplyByX(self, count):
-        self._poly = [0] * count + self._poly
-        self._number = self._getNumberFromPoly(self._poly)
-
-    def divideByX(self, count):
-        self._poly = self._poly[count:]
-        self._number = self._getNumberFromPoly(self._poly)
-
-    def add(self, binaryNumber):
-        result = polynomial.polyadd(
-            self._poly, binaryNumber._poly)
-        result = self._normalizePoly(result, len(self._poly))
-        self._poly = result
-        self._number = self._getNumberFromPoly(self._poly)
-
-    def shiftLeft(self, times=1):
-        self._poly = list(numpy.roll(self._poly, times))
-        self._number = self._getNumberFromPoly(self._poly)
-
-    def shiftRight(self, times=1):
-        self._poly = list(numpy.roll(self._poly, -times))
-        self._number = self._getNumberFromPoly(self._poly)
-
-    def _getNumberFromPoly(self, poly):
-        number = 0
-        power = 0
-        for digit in poly:
-            number += 2 ** power * int(digit)
-            power += 1
-        return number
+    def copy(self):
+        return Polynomial(poly=list(self._poly))
 
     def _normalizePoly(self, poly, expectedSize):
         norm = [abs(int(i)) % 2 for i in poly]
@@ -74,21 +34,83 @@ class Polynomial:
         reversedDigit = []
         for digit in reversed(self._translateToBinaryList(number)):
             reversedDigit.append(digit)
-        return reversedDigit        
+        return reversedDigit
+
+    def _getNumberFromPoly(self):
+        number = 0
+        power = 0
+        for digit in self._poly:
+            number += 2 ** power * int(digit)
+            power += 1
+        return number
 
     def _translateToBinaryList(self, number):
         return [int(d) for d in str(bin(number))[2:]]
 
+    def __len__(self):
+        return len(self._poly)
+
+    def __getitem__(self, key):
+        return self._poly[key]
+
+    def __setitem__(self, key, value):
+        self._poly[key] = value
+
+    def __str__(self):
+        return ' '.join(list(str(bin(self._getNumberFromPoly()))[2:]))
+
     def __repr__(self):
         return self._poly.__repr__()
 
+    def __int__(self):
+        return self._getNumberFromPoly()
+
+    def __hex__(self):
+        return hex(self._getNumberFromPoly())
+
+    def __oct__(self):
+        return oct(self._getNumberFromPoly())
+
+    def __index__(self):
+        return self._getNumberFromPoly()
+
+    def __mod__(self, other):
+        result = polynomial.polydiv(self._poly, other._poly)[1]
+        result = self._normalizePoly(result, len(self._poly))
+        return Polynomial(poly=result)
+
+    def __mul__(self, other):
+        result = [0] * other + self._poly
+        return Polynomial(poly=result)
+
+    def __div__(self, other):
+        result = self._poly[other:]
+        return Polynomial(poly=result)
+
+    def __add__(self, other):
+        result = polynomial.polyadd(self._poly, other._poly)
+        result = self._normalizePoly(result, len(self._poly))
+        return Polynomial(poly=result)
+
+    def __lshift__(self, other):
+        result = list(roll(self._poly, other))
+        return Polynomial(poly=result)
+
+    def __rshift__(self, other):
+        result = list(roll(self._poly, -other))
+        return Polynomial(poly=result)
+
+    def __eq__(self, other):
+        return self._getNumberFromPoly() == other._getNumberFromPoly()
+
+
+
 if __name__ == '__main__':
     a = Polynomial(13)
-    b = Polynomial(14)
+    b = Polynomial(8)
     print a
     print b
-    div = a.divideRemainder(b)
-    print div
-
-    a.add(b)
-    print a
+    print a*8
+    print a+b
+    print a/2
+    print a%b
