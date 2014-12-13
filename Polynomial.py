@@ -112,9 +112,9 @@ class Polynomial:
         result = [0] * other + self._poly
         return Polynomial(poly=result)
 
-    # and i guess this one too
     def __div__(self, other):
-        result = self._poly[other:]
+        result = polynomial.polydiv(self._poly, other._poly)[0]
+        result = self._normalizePoly(result, 0)
         return Polynomial(poly=result)
 
     def __add__(self, other):
@@ -126,8 +126,9 @@ class Polynomial:
         result = [0] * other + self._poly
         return Polynomial(poly=result)
 
+    # and this function too
     def __rshift__(self, other):
-        result = list(roll(self._poly, - other))
+        result = self._poly[other:]
         return Polynomial(poly=result)
 
     def __eq__(self, other):

@@ -18,7 +18,7 @@ class CoderBCH:
         return self._encode(info)
 
     def decode(self, info):
-        return self._decode(info) / self._nk
+        return self._decode(info) >> self._nk
 
     def _isEncodePossible(self, info):
         return info.degree() <= self._k
@@ -46,29 +46,43 @@ class CoderBCH:
             return info
 
         # assume that generator first minimal poly is m1
-        partSyndroms = self._getPartSyndroms(syndrome , 1)
-        s = Polynomial(1) << (2 * t)
-        B = [[ 1, 0 ],
+        t = self._getPartSyndroms(syndrome , 1)
+        A = [[ 1, 0 ],
             [ 0, 1 ]]
 
-        # deg(t) <= t - 1
-        if len(partSyndroms) - 1 <= t - 1:
-            print 'deg(t) <= t - 1'
-            # delta = B[1][1](0)  #  Bxx(0) from Euclidian algoritm (recurse 0)
-            # A = partSyndroms * delta ^ -1
-            # fi = B[1][1] * delta ^ -1
+        self._euclidian(t, A)
 
-        else:
-            print 'deg(t) > t - 1'
-            # euclidian(s, partSyndroms, B)
-            # result of algoritm should be placed on B[1][1], and partSyndroms (see euclid.pdf)
+        # delta = A[1][1](0)  #  Bxx(0) from Euclidian algoritm (recurse 0)
+        # A = partSyndroms * delta ^ -1
+        # fi = A[1][1] * delta ^ -1
 
 
     def _getPartSyndroms(self, syndrome, m0):
         partSyndroms = []
         for i in range(m0, 2 * t - 1):
-            partSyndroms.append(syndrome.polyValAlpha(i, pow(2, m) - 2))
+            polyAlpha = syndrome.polyValAlpha(i, pow(2, m) - 2)
+            if polyAlpha.degree() != 0:
+                partSyndroms.append(syndrome.polyValAlpha(i, pow(2, m) - 2))
+            else:
+                print 'Syndrom S%d is 0' % i
         return partSyndroms
+
+    def _euclidian(self, t, A):
+        s = Polynomial(1) << (2 * self._t)
+
+        # while len(t) - 1 >= self._t:
+        #     sOld = s
+        #     tOld = t
+        #     AOld = A
+
+        #     Q = sOld / tOld
+        #     s = tOld
+        #     t = sOld + Q * tOld
+
+        #     A[0][0] = AOld[1][0]
+        #     A[0][1] = AOld[1][1]
+        #     A[1][0] = AOld[0][0] + AOld[1][0] * Q
+        #     A[1][1] = AOld[0][1] +  AOld[1][1] * Q
 
     def __repr__(self):
         return """Coder parameters:
