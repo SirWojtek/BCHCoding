@@ -39,6 +39,37 @@ class CoderBCH:
             decodedMsg = decodedMsg >> 1
         raise RuntimeError('Unable to correct errors for input message: ' + str(hex(info)))
 
+    def decodeEuclid(self, info):
+        syndrome = info % self._generator
+        if syndrome.hammingWeight() == 0:
+            print 'No transmission error'
+            return info
+
+        # assume that generator first minimal poly is m1
+        partSyndroms = self._getPartSyndroms(syndrome , 1)
+        s = Polynomial(1) << (2 * t)
+        B = [[ 1, 0 ],
+            [ 0, 1 ]]
+
+        # deg(t) <= t - 1
+        if len(partSyndroms) - 1 <= t - 1:
+            print 'deg(t) <= t - 1'
+            # delta = B[1][1](0)  #  Bxx(0) from Euclidian algoritm (recurse 0)
+            # A = partSyndroms * delta ^ -1
+            # fi = B[1][1] * delta ^ -1
+
+        else:
+            print 'deg(t) > t - 1'
+            # euclidian(s, partSyndroms, B)
+            # result of algoritm should be placed on B[1][1], and partSyndroms (see euclid.pdf)
+
+
+    def _getPartSyndroms(self, syndrome, m0):
+        partSyndroms = []
+        for i in range(m0, 2 * t - 1):
+            partSyndroms.append(syndrome.polyValAlpha(i, pow(2, m) - 2))
+        return partSyndroms
+
     def __repr__(self):
         return """Coder parameters:
 generator:\t%s
@@ -83,3 +114,5 @@ if __name__ == '__main__':
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
+    decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    print 'DECODED EUCLID: ' + str(decodedMsgEuclid)

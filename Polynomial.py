@@ -11,7 +11,12 @@ class Polynomial:
             self._poly = self._getPolynomial(number)
 
     def degree(self):
-        return (len(self._poly) - 1) - self._poly[::-1].index(1)
+        try:
+            degree = (len(self._poly) - 1) - self._poly[::-1].index(1)
+        except ValueError:
+            return 0
+        else:
+            return degree
 
     def hammingWeight(self):
         weight = 0
@@ -23,12 +28,35 @@ class Polynomial:
     def copy(self):
         return Polynomial(poly=list(self._poly))
 
+    # function returns poly(alpha^alphaPower)
+    # computed alpha power is reduced mod maxAlphaPower
+    def polyValAlpha(self, alphaPower, maxAlphaPower):
+        maxDegree = self._getMaxDegree(alphaPower, maxAlphaPower)
+        result = [0 for i in range(maxDegree + 1)]
+        for degree in range(len(self._poly)):
+            currentIndex = degree
+            newIndex = (alphaPower * degree) % (maxAlphaPower + 1)
+            result[newIndex] += self._poly[currentIndex]
+        result = self._normalizePoly(result, 0)
+        return Polynomial(poly = result)
+
+    def _getMaxDegree(self, alphaPower, maxAlphaPower):
+        if alphaPower * self.degree() > maxAlphaPower:
+            return maxAlphaPower
+        else:
+            return alphaPower * self.degree()
+
     def _normalizePoly(self, poly, expectedSize):
         norm = [abs(int(i)) % 2 for i in poly]
+        self._removeTrailingZeros(norm)
         sizeDiff = expectedSize - len(norm)
         if sizeDiff > 0:
             norm += [0]*sizeDiff
         return norm
+
+    def _removeTrailingZeros(self, poly):
+        while 0 == poly[-1]:
+            poly.pop()
 
     def _getPolynomial(self, number):
         reversedDigit = []
@@ -76,13 +104,15 @@ class Polynomial:
 
     def __mod__(self, other):
         result = polynomial.polydiv(self._poly, other._poly)[1]
-        result = self._normalizePoly(result, len(self._poly))
+        result = self._normalizePoly(result, 0)
         return Polynomial(poly=result)
 
+    # function do not work properly
     def __mul__(self, other):
         result = [0] * other + self._poly
         return Polynomial(poly=result)
 
+    # and i guess this one too
     def __div__(self, other):
         result = self._poly[other:]
         return Polynomial(poly=result)
@@ -93,24 +123,24 @@ class Polynomial:
         return Polynomial(poly=result)
 
     def __lshift__(self, other):
-        result = list(roll(self._poly, other))
+        result = [0] * other + self._poly
         return Polynomial(poly=result)
 
     def __rshift__(self, other):
-        result = list(roll(self._poly, -other))
+        result = list(roll(self._poly, - other))
         return Polynomial(poly=result)
 
     def __eq__(self, other):
         return self._getNumberFromPoly() == other._getNumberFromPoly()
 
-
-
 if __name__ == '__main__':
     a = Polynomial(13)
     b = Polynomial(8)
+    c = Polynomial(0b1011)
     print a
     print b
     print a*8
     print a+b
     print a/2
     print a%b
+    print c.polyValAlpha(5, 14)
