@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from Polynomial import *
-import numpy
+from Helpers import addNoise, getFieldGenerator
 
 class CoderBCH:
 
@@ -18,7 +18,7 @@ class CoderBCH:
         return self._encode(info)
 
     def decode(self, info):
-        return self._decode(info) >> self._nk
+        return self._decode(info) / self._nk
 
     def _isEncodePossible(self, info):
         return info.degree() <= self._k
@@ -56,7 +56,7 @@ class CoderBCH:
         # A = partSyndroms * delta ^ -1
         # fi = A[1][1] * delta ^ -1
 
-
+    #TODO: Uzywasz  t, m zamiast self._t, self._m.
     def _getPartSyndroms(self, syndrome, m0):
         partSyndroms = []
         for i in range(m0, 2 * t - 1):
@@ -94,20 +94,6 @@ n - k:\t\t%d
 t:\t\t%d
 """ % (int(self._generator), self._m, self._n, self._k, self._nk, self._t)
 
-
-def addNoise(message, maxErrors, generatorDegree=None):
-    poly = message.copy()
-    if generatorDegree is not None:
-        positions = numpy.random.randint(generatorDegree, size=maxErrors)
-    else:
-        positions = numpy.random.randint(len(poly), size=maxErrors)
-    positions = sorted(list(set(positions)))
-    print 'NOISE_POSITIONS' + str(positions)
-    for position in positions:
-        poly[position] = int(not(poly[position]))
-    return poly
-
-
 if __name__ == '__main__':
     t = 30
     m = 8
@@ -128,5 +114,5 @@ if __name__ == '__main__':
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
-    decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
-    print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
+    #decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    #print 'DECODED EUCLID: ' + str(decodedMsgEuclid)

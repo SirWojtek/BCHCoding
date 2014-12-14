@@ -12,11 +12,9 @@ class Polynomial:
 
     def degree(self):
         try:
-            degree = (len(self._poly) - 1) - self._poly[::-1].index(1)
+            return (len(self._poly) - 1) - self._poly[::-1].index(1)
         except ValueError:
             return 0
-        else:
-            return degree
 
     def hammingWeight(self):
         weight = 0
@@ -48,15 +46,10 @@ class Polynomial:
 
     def _normalizePoly(self, poly, expectedSize):
         norm = [abs(int(i)) % 2 for i in poly]
-        self._removeTrailingZeros(norm)
         sizeDiff = expectedSize - len(norm)
         if sizeDiff > 0:
             norm += [0]*sizeDiff
         return norm
-
-    def _removeTrailingZeros(self, poly):
-        while 0 == poly[-1]:
-            poly.pop()
 
     def _getPolynomial(self, number):
         reversedDigit = []
@@ -104,40 +97,56 @@ class Polynomial:
 
     def __mod__(self, other):
         result = polynomial.polydiv(self._poly, other._poly)[1]
-        result = self._normalizePoly(result, 0)
+        result = self._normalizePoly(result, len(self._poly))
         return Polynomial(poly=result)
 
-    # function do not work properly
     def __mul__(self, other):
-        result = [0] * other + self._poly
+        #TODO: write mul for polynomials
+        if isinstance(other, Polynomial):
+            result = [0] * other + self._poly
+        else:
+            result = [0] * other + self._poly
         return Polynomial(poly=result)
+
+    def __imul__(self, other):
+        return self.__mul__(other)
 
     def __div__(self, other):
-        result = polynomial.polydiv(self._poly, other._poly)[0]
-        result = self._normalizePoly(result, 0)
+        if isinstance(other, Polynomial):
+            result = polynomial.polydiv(self._poly, other._poly)[0]
+        else:
+            result = self._poly[other:]
+        result = self._normalizePoly(result, len(self._poly))
         return Polynomial(poly=result)
+
+    def __idiv__(self, other):
+        return self.__div__(other)
 
     def __add__(self, other):
         result = polynomial.polyadd(self._poly, other._poly)
         result = self._normalizePoly(result, len(self._poly))
         return Polynomial(poly=result)
 
+    def __iadd__(self, other):
+        return self.__add__(other)
+
     def __lshift__(self, other):
-        result = [0] * other + self._poly
+        result = list(roll(self._poly, other))
         return Polynomial(poly=result)
 
     # and this function too
     def __rshift__(self, other):
-        result = self._poly[other:]
+        result = list(roll(self._poly, -other))
         return Polynomial(poly=result)
 
     def __eq__(self, other):
         return self._getNumberFromPoly() == other._getNumberFromPoly()
 
 if __name__ == '__main__':
-    a = Polynomial(13)
-    b = Polynomial(8)
-    c = Polynomial(0b1011)
+    a = Polynomial(0b1000)
+    b = Polynomial(0b0011)
+    print a+a
+    '''
     print a
     print b
     print a*8
@@ -145,3 +154,4 @@ if __name__ == '__main__':
     print a/2
     print a%b
     print c.polyValAlpha(5, 14)
+    '''
