@@ -101,9 +101,8 @@ class Polynomial:
         return Polynomial(poly=result)
 
     def __mul__(self, other):
-        #TODO: write mul for polynomials
         if isinstance(other, Polynomial):
-            result = [0] * other + self._poly
+            result = polynomial.polymul(self._poly, other._poly)
         else:
             result = [0] * other + self._poly
         return Polynomial(poly=result)
@@ -145,13 +144,10 @@ class Polynomial:
 if __name__ == '__main__':
     a = Polynomial(0b1000)
     b = Polynomial(0b0011)
-    print a+a
-    '''
     print a
     print b
     print a*8
     print a+b
     print a/2
     print a%b
-    print c.polyValAlpha(5, 14)
-    '''
+    print a*b

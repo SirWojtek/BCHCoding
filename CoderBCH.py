@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from Polynomial import *
-from Helpers import addNoise, getFieldGenerator
+import numpy
 
 class CoderBCH:
 
@@ -93,6 +93,19 @@ k:\t\t%d
 n - k:\t\t%d
 t:\t\t%d
 """ % (int(self._generator), self._m, self._n, self._k, self._nk, self._t)
+
+def addNoise(message, maxErrors, generatorDegree):
+    poly = message.copy()
+    positions = numpy.random.randint(generatorDegree, size=maxErrors)
+    shift = numpy.random.randint(len(message) - generatorDegree)
+    positions = sorted(list(set(positions)))
+    print len(positions)
+    for i, pos in enumerate(positions):
+        positions[i]  = pos + shift
+    print 'NOISE_POSITIONS' + str(positions)
+    for position in positions:
+        poly[position] = int(not(poly[position]))
+    return poly
 
 if __name__ == '__main__':
     t = 30
