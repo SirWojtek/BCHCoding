@@ -11,6 +11,7 @@ class CoderBCH:
         self._nk = self._generator.degree()
         self._k = self._n - self._nk
         self._t = t
+        self._field = Field(m)
 
     def encode(self, info):
         if not self._isEncodePossible(info):
@@ -56,15 +57,15 @@ class CoderBCH:
         # A = partSyndroms * delta ^ -1
         # fi = A[1][1] * delta ^ -1
 
-    #TODO: Uzywasz  t, m zamiast self._t, self._m.
     def _getPartSyndroms(self, syndrome, m0):
-        partSyndroms = []
-        for i in range(m0, 2 * t - 1):
-            polyAlpha = syndrome.polyValAlpha(i, pow(2, m) - 2)
-            if polyAlpha.degree() != 0:
-                partSyndroms.append(syndrome.polyValAlpha(i, pow(2, m) - 2))
+        partSyndroms = {}
+        for i in range(m0, 2 * self._t - 1):
+            polyAlpha = syndrome.polyValAlpha(i, self._m)
+            if polyAlpha:
+                partSyndroms[i] = polyAlpha
             else:
                 print 'Syndrom S%d is 0' % i
+        print partSyndroms
         return partSyndroms
 
     def _euclidian(self, t, A):
@@ -127,5 +128,5 @@ if __name__ == '__main__':
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
-    #decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
-    #print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
+    # decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    # print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
