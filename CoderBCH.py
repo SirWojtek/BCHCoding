@@ -1,6 +1,6 @@
 #!/usr/bin/python
 from Polynomial import *
-import numpy
+import numpy, copy
 
 class CoderBCH:
 
@@ -48,14 +48,26 @@ class CoderBCH:
 
         # assume that generator first minimal poly is m1
         t = self._getPartSyndroms(syndrome , 1)
-        A = [[ 1, 0 ],
-            [ 0, 1 ]]
+        print 'Part syndroms computed'
 
-        self._euclidian(t, A)
+        B = self._euclidian(t)
+        print 'Euclidian algorithm ended'
 
-        # delta = A[1][1](0)  #  Bxx(0) from Euclidian algoritm (recurse 0)
-        # A = partSyndroms * delta ^ -1
-        # fi = A[1][1] * delta ^ -1
+        delta = {0 : Polynomial.getReversedPower(self._m, B[0]) }
+        (fi, rem) = Polynomial.divideUsingAlphaMap(self._m, B, delta)
+        print 'Fi function computed'
+
+        print self._getErrorPositions(fi)
+
+    def _getErrorPositions(self, fi):
+        result = []
+
+        for i in range(self._n):
+            if not Polynomial.getValueUsingAlphaMap(self._m, fi , i):
+                result.append(i)
+
+        return result
+
 
     def _getPartSyndroms(self, syndrome, m0):
         partSyndroms = {}
@@ -67,25 +79,48 @@ class CoderBCH:
                 print 'Syndrom S%d is 0' % i
         return partSyndroms
 
-    def _euclidian(self, t, A):
+    def _euclidian(self, T):
+        A = [[ 1, 0 ],
+            [ 0, 1 ]]
         s = Polynomial(1) * (2 * self._t)
+        s = s.getAlphaMap()
+        t = T
 
-        print s.divideByAlphaMap(t, self._m)
+        while Polynomial.getMapMaxKey(t) >= self._t:
+            AOld = copy.deepcopy(A)
 
-        # while len(t) - 1 >= self._t:
-        #     sOld = s
-        #     tOld = t
-        #     AOld = A
-        #     QOld = Q
+            (result, remainder) = Polynomial.divideUsingAlphaMap(self._m, s, t)
+            Q = result
+            s = t
+            t = remainder
 
-        #     Q = sOld / tOld
-        #     s = tOld
-        #     t = sOld + QOld * tOld
+            A[0][0] = AOld[1][0]
+            A[0][1] = AOld[1][1]
+            minusQ = self._getMinusQ(Q)
+            # A[0][0] + A[1][0] * Q
+            A[1][0] = self._getA(AOld[0][0], AOld[1][0], minusQ)
+            # A[0][1] + A[1][1] * Q
+            A[1][1] = self._getA(AOld[0][1], AOld[1][1], minusQ)
 
-        #     A[0][0] = AOld[1][0]
-        #     A[0][1] = AOld[1][1]
-        #     A[1][0] = AOld[0][0] + AOld[1][0] * QOld
-        #     A[1][1] = AOld[0][1] +  AOld[1][1] * QOld
+        return A[1][1]
+
+    def _getMinusQ(self, Q):
+        polyAlphaZero = {}
+        return Polynomial.subUsingAlphaMap(self._m, polyAlphaZero, Q)
+
+    def _getA(self, a0, a1, Q):
+        if a0 == 0 and a1 == 1:
+            return Q
+        if a0 == 1 and a1 == 0:
+            return 1
+        if a0 == 1:  # a1 == alphaMap
+            resultQ = Polynomial.multiplyUsingAlphaMap(self._m, Q, a1)
+            return Polynomial.addUsingAlphaMap(self._m, resultQ, {0 : 0}) # <- 1
+        else: # a0 == alphaMap and a1 == alphaMap
+            resultQ = Polynomial.multiplyUsingAlphaMap(self._m, Q, a1)
+            return Polynomial.addUsingAlphaMap(self._m, resultQ, a0)
+
+
 
     def __repr__(self):
         return """Coder parameters:
@@ -130,5 +165,7 @@ if __name__ == '__main__':
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
+    print '-----------------------------------------------'
     decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    print '-----------------------------------------------'
     print 'DECODED EUCLID: ' + str(decodedMsgEuclid)

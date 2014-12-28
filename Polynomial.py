@@ -31,19 +31,34 @@ class Field:
             return None
         return (a1 + a2) %  self._maxAlphaPow
 
+    def powerAlpha(self, a1, a2):
+        return (a1 * a2) %  self._maxAlphaPow
+
+    def addAlpha(self, a1, a2):
+        if a1 is None:
+            return a2
+        elif a2 is None:
+            return a1
+
+        a1Poly = self.getAlpha(a1)
+        a2Poly = self.getAlpha(a2)
+        resultPoly = a1Poly + a2Poly
+
+        return self.getAlphaPower(resultPoly)
+
     def divideAlpha(self, a1, a2):
         return (a1 - a2) %  self._maxAlphaPow
 
     def subAlpha(self, a1, a2):
         if a2 is None:
-            return None
+            return a1
         elif a1 is None:
             return self.getAlphaPower(self._getMinusAlpha(a2))
 
         a1Poly = self.getAlpha(a1)
         a2Poly = self._getMinusAlpha(a2)
-
         resultPoly = a1Poly + a2Poly
+
         return self.getAlphaPower(resultPoly)
 
     def _getMinusAlpha(self, degree):
@@ -56,6 +71,9 @@ class Field:
                 p = 1
 
         return alphaPoly
+
+    def getReversedPower(self, power):
+        return self._maxAlphaPow - power
 
     # W razie potrzeby wiekszych: http://theory.cs.uvic.ca/gen/poly.html
     def _createGenerator(self, fieldDegree):
@@ -135,12 +153,8 @@ class Polynomial:
 
         return field.getAlphaPower(result)
 
-    def divideByAlphaMap(self, division, m):
-        field = Field(m)
-        divisor = self._getAlphaMapDivisor()
-        return self.divideUsingAlphaMap(field, divisor, division)
 
-    def _getAlphaMapDivisor(self):
+    def getAlphaMap(self):
         result = {}
         for i in range(len(self._poly)):
             if self._poly[i] == 1:
@@ -149,31 +163,88 @@ class Polynomial:
                 result[i] = None
         return result
 
-    def divideUsingAlphaMap(self, field, divisor, division):
+    @staticmethod
+    def addUsingAlphaMap(m, map1, map2):
+        field = Field(m)
+        result = map1
+
+        for key, value in map2.iteritems():
+            value2 = result.get(key, None)
+            result[key] = field.addAlpha(value, value2)
+
+        return result
+
+    @staticmethod
+    def subUsingAlphaMap(m, map1, map2):
+        field = Field(m)
+        result = map1
+
+        for key, value in map2.iteritems():
+            value2 = result.get(key, None)
+            result[key] = field.subAlpha(value, value2)
+
+        return result
+
+    @staticmethod
+    def multiplyUsingAlphaMap(m, map1, map2):
+        field = Field(m)
+        result = {}
+
+        for key1, value1 in map1.iteritems():
+            for key2, value2 in map2.iteritems():
+                multiplyIndex = key1 + key2
+                partMul = field.multiplyAlpha(value1, value2)
+                result[multiplyIndex] = field.addAlpha(result.get(multiplyIndex, None), partMul)
+
+        return result
+
+    @staticmethod
+    def divideUsingAlphaMap(m, divisor, division):
+        field = Field(m)
         remainder = divisor
         result = {}
-        divisionDegree = self._getMapMaxKey(division)
+        divisionDegree = Polynomial.getMapMaxKey(division)
 
-        while self._getMapMaxKey(remainder) - divisionDegree > 0:
-            remainderDegree = self._getMapMaxKey(remainder)
+        while remainder and Polynomial.getMapMaxKey(remainder) - divisionDegree >= 0:
+            remainderDegree = Polynomial.getMapMaxKey(remainder)
             currentDegree = remainderDegree - divisionDegree
             result[currentDegree] = field.divideAlpha(remainder[remainderDegree],
                 division[divisionDegree])
 
             for i in range(divisionDegree + 1):
                 part = field.multiplyAlpha(result[currentDegree], division.get(i, None))
-                remainder[i + currentDegree] = field.subAlpha(remainder[i + currentDegree], part)
+                remainder[i + currentDegree] = field.subAlpha(
+                    remainder.get(i + currentDegree, None), part)
 
-            self._normalizeAlphaMap(remainder)
+            Polynomial._normalizeAlphaMap(remainder)
 
         return result, remainder
 
-    def _normalizeAlphaMap(self, alphaMap):
-        while len(alphaMap) and alphaMap[self._getMapMaxKey(alphaMap)] is None:
-            del alphaMap[self._getMapMaxKey(alphaMap)]
+    @staticmethod
+    def _normalizeAlphaMap(alphaMap):
+        while len(alphaMap) and alphaMap[Polynomial.getMapMaxKey(alphaMap)] is None:
+            del alphaMap[Polynomial.getMapMaxKey(alphaMap)]
 
-    def _getMapMaxKey(self, m):
+    @staticmethod
+    def getMapMaxKey(m):
         return max(m.keys(), key = int)
+
+    @staticmethod
+    def getValueUsingAlphaMap(m, polyAlpha, power):
+        field = Field(m)
+        result = 0
+
+        for key, value in polyAlpha.iteritems():
+            temp = field.powerAlpha(key, power)
+            temp = field.multiplyAlpha(value, temp)
+            result = field.addAlpha(result, temp)
+
+        return result
+
+    @staticmethod
+    def getReversedPower(m, power):
+        field = Field(m)
+        return field.getReversedPower(power)
 
     def _normalizePoly(self, poly, expectedSize):
         norm = [abs(int(i)) % 2 for i in poly]
