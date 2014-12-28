@@ -10,13 +10,14 @@ class Field:
         else:
             self._degree = degree
             self._generator = self._createGenerator(degree)
+        self._maxAlphaPow = pow(2, self._degree) - 1
         self._alphaPowerMap = self._getPowerMap()
 
     def getAlpha(self, degree):
         if degree < 0:
-            degree = pow(2, self._degree) - 1 - degree
+            degree = self._maxAlphaPow - degree
 
-        poly = Polynomial(0b1)*degree
+        poly = Polynomial(0b1) * degree
         return poly % self._generator
 
     def getAlphaPower(self, poly):
@@ -24,6 +25,37 @@ class Field:
 
     def getGenerator(self):
         return self._generator
+
+    def multiplyAlpha(self, a1, a2):
+        if a1 is None or a2 is None:
+            return None
+        return (a1 + a2) %  self._maxAlphaPow
+
+    def divideAlpha(self, a1, a2):
+        return (a1 - a2) %  self._maxAlphaPow
+
+    def subAlpha(self, a1, a2):
+        if a2 is None:
+            return None
+        elif a1 is None:
+            return self.getAlphaPower(self._getMinusAlpha(a2))
+
+        a1Poly = self.getAlpha(a1)
+        a2Poly = self._getMinusAlpha(a2)
+
+        resultPoly = a1Poly + a2Poly
+        return self.getAlphaPower(resultPoly)
+
+    def _getMinusAlpha(self, degree):
+        alphaPoly = self.getAlpha(degree)
+
+        for p in alphaPoly._poly:
+            if p == 1:
+                p = 0
+            else:
+                p = 1
+
+        return alphaPoly
 
     # W razie potrzeby wiekszych: http://theory.cs.uvic.ca/gen/poly.html
     def _createGenerator(self, fieldDegree):
@@ -36,7 +68,7 @@ class Field:
 
     def _getPowerMap(self):
         result = {}
-        for i in range(pow(2, self._degree) - 1):
+        for i in range(self._maxAlphaPow):
             result[self.getAlpha(i)] = i
         return result
 
@@ -90,6 +122,9 @@ class Polynomial:
         else:
             return alphaPower * self.degree()
 
+    def _getMinusAlpha(self, field, alphaPower):
+        polyAlpha = field.getAlpha(alphaPower)
+
     def _sumAlpha(self, poly, m):
         field = Field(m)
         result = Polynomial(0)
@@ -103,7 +138,7 @@ class Polynomial:
     def divideByAlphaMap(self, division, m):
         field = Field(m)
         divisor = self._getAlphaMapDivisor()
-        return self._divideUsingAlphaMap(field, divisor, division)
+        return self.divideUsingAlphaMap(field, divisor, division)
 
     def _getAlphaMapDivisor(self):
         result = {}
@@ -114,9 +149,31 @@ class Polynomial:
                 result[i] = None
         return result
 
-    def _divideUsingAlphaMap(self, field, divisor, division):
-        # TODO: implement this awesome algorithm
-        return None
+    def divideUsingAlphaMap(self, field, divisor, division):
+        remainder = divisor
+        result = {}
+        divisionDegree = self._getMapMaxKey(division)
+
+        while self._getMapMaxKey(remainder) - divisionDegree > 0:
+            remainderDegree = self._getMapMaxKey(remainder)
+            currentDegree = remainderDegree - divisionDegree
+            result[currentDegree] = field.divideAlpha(remainder[remainderDegree],
+                division[divisionDegree])
+
+            for i in range(divisionDegree + 1):
+                part = field.multiplyAlpha(result[currentDegree], division.get(i, None))
+                remainder[i + currentDegree] = field.subAlpha(remainder[i + currentDegree], part)
+
+            self._normalizeAlphaMap(remainder)
+
+        return result, remainder
+
+    def _normalizeAlphaMap(self, alphaMap):
+        while len(alphaMap) and alphaMap[self._getMapMaxKey(alphaMap)] is None:
+            del alphaMap[self._getMapMaxKey(alphaMap)]
+
+    def _getMapMaxKey(self, m):
+        return max(m.keys(), key = int)
 
     def _normalizePoly(self, poly, expectedSize):
         norm = [abs(int(i)) % 2 for i in poly]

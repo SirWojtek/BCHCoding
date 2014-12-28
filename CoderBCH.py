@@ -65,25 +65,27 @@ class CoderBCH:
                 partSyndroms[i] = polyAlpha
             else:
                 print 'Syndrom S%d is 0' % i
-        print partSyndroms
         return partSyndroms
 
     def _euclidian(self, t, A):
-        s = Polynomial(1) << (2 * self._t)
+        s = Polynomial(1) * (2 * self._t)
+
+        print s.divideByAlphaMap(t, self._m)
 
         # while len(t) - 1 >= self._t:
         #     sOld = s
         #     tOld = t
         #     AOld = A
+        #     QOld = Q
 
         #     Q = sOld / tOld
         #     s = tOld
-        #     t = sOld + Q * tOld
+        #     t = sOld + QOld * tOld
 
         #     A[0][0] = AOld[1][0]
         #     A[0][1] = AOld[1][1]
-        #     A[1][0] = AOld[0][0] + AOld[1][0] * Q
-        #     A[1][1] = AOld[0][1] +  AOld[1][1] * Q
+        #     A[1][0] = AOld[0][0] + AOld[1][0] * QOld
+        #     A[1][1] = AOld[0][1] +  AOld[1][1] * QOld
 
     def __repr__(self):
         return """Coder parameters:
@@ -128,5 +130,5 @@ if __name__ == '__main__':
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
-    # decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
-    # print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
+    decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
