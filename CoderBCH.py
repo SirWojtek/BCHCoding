@@ -53,9 +53,9 @@ class CoderBCH:
         B = self._euclidian(t)
         print 'Euclidian algorithm ended'
 
-        delta = {0 : Polynomial.getReversedPower(self._m, B[0]) }
-        (fi, rem) = Polynomial.divideUsingAlphaMap(self._m, B, delta)
-        print 'Fi function computed'
+        delta = {0 : B[0]}
+        (fi, rem) = Polynomial.divideUsingAlphaMap(B, delta, self._field)
+        print 'Error localizator function computed'
 
         print self._getErrorPositions(fi)
 
@@ -63,20 +63,22 @@ class CoderBCH:
         result = []
 
         for i in range(self._n):
-            if not Polynomial.getValueUsingAlphaMap(self._m, fi , i):
-                result.append(i)
+            if not Polynomial.getValueUsingAlphaMap(fi , i, self._field):
+                result.append(self._field.getReversedPower(i))
 
         return result
 
-
     def _getPartSyndroms(self, syndrome, m0):
         partSyndroms = {}
-        for i in range(m0, 2 * self._t - 1):
-            polyAlpha = syndrome.polyValAlpha(i, self._m)
-            if polyAlpha:
-                partSyndroms[i] = polyAlpha
+        polyAlpha = syndrome.getAlphaMap()
+
+        for i in range(m0, m0 + 2 * self._t):
+            value = Polynomial.getValueUsingAlphaMap(polyAlpha, i, self._field)
+            if value is None:
+                print 'Syndrom %d is 0' % i
             else:
-                print 'Syndrom S%d is 0' % i
+                partSyndroms[i] = value
+
         return partSyndroms
 
     def _euclidian(self, T):
@@ -84,29 +86,24 @@ class CoderBCH:
             [ 0, 1 ]]
         s = Polynomial(1) * (2 * self._t)
         s = s.getAlphaMap()
-        t = T
+        t = copy.deepcopy(T)
 
         while Polynomial.getMapMaxKey(t) >= self._t:
             AOld = copy.deepcopy(A)
 
-            (result, remainder) = Polynomial.divideUsingAlphaMap(self._m, s, t)
+            (result, remainder) = Polynomial.divideUsingAlphaMap(s, t, self._field)
             Q = result
             s = t
             t = remainder
 
             A[0][0] = AOld[1][0]
             A[0][1] = AOld[1][1]
-            minusQ = self._getMinusQ(Q)
             # A[0][0] + A[1][0] * Q
-            A[1][0] = self._getA(AOld[0][0], AOld[1][0], minusQ)
+            A[1][0] = self._getA(AOld[0][0], AOld[1][0], Q)
             # A[0][1] + A[1][1] * Q
-            A[1][1] = self._getA(AOld[0][1], AOld[1][1], minusQ)
+            A[1][1] = self._getA(AOld[0][1], AOld[1][1], Q)
 
         return A[1][1]
-
-    def _getMinusQ(self, Q):
-        polyAlphaZero = {}
-        return Polynomial.subUsingAlphaMap(self._m, polyAlphaZero, Q)
 
     def _getA(self, a0, a1, Q):
         if a0 == 0 and a1 == 1:
@@ -114,11 +111,11 @@ class CoderBCH:
         if a0 == 1 and a1 == 0:
             return 1
         if a0 == 1:  # a1 == alphaMap
-            resultQ = Polynomial.multiplyUsingAlphaMap(self._m, Q, a1)
-            return Polynomial.addUsingAlphaMap(self._m, resultQ, {0 : 0}) # <- 1
+            resultQ = Polynomial.multiplyUsingAlphaMap(Q, a1, self._field)
+            return Polynomial.addUsingAlphaMap(resultQ, {0 : 0}, self._field) # <- 1
         else: # a0 == alphaMap and a1 == alphaMap
-            resultQ = Polynomial.multiplyUsingAlphaMap(self._m, Q, a1)
-            return Polynomial.addUsingAlphaMap(self._m, resultQ, a0)
+            resultQ = Polynomial.multiplyUsingAlphaMap(Q, a1, self._field)
+            return Polynomial.addUsingAlphaMap(resultQ, a0, self._field)
 
 
 
@@ -146,9 +143,9 @@ def addNoise(message, maxErrors, generatorDegree):
     return poly
 
 if __name__ == '__main__':
-    t = 30
+    t = 12
     m = 8
-    gen = Polynomial(010754475055163544325315217357707003666111726455267613656702543301)
+    gen = Polynomial(07500415510075602551574724514601)
     info = Polynomial(0b101011100110101110011010111001101011100110101110011010111001010)
     coder = CoderBCH(gen, m, t)
     print coder
@@ -159,8 +156,14 @@ if __name__ == '__main__':
     noisedMsg = addNoise(encodedMsg, t, gen.degree())
     #noisedMsg = encodedMsg
     print 'NOISED: ' + str(noisedMsg)
-    decodedMsg = coder.decode(noisedMsg)
-    print 'DECODED: ' + str(decodedMsg)
+    decodedMsg = Polynomial()
+    try:
+        decodedMsg = coder.decode(noisedMsg)
+    except RuntimeError, e:
+        print e
+    else:
+        print 'DECODED: ' + str(decodedMsg)
+
     if decodedMsg == info:
         print 'INFO and DECODED messages match!'
     else:

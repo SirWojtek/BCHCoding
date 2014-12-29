@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from numpy import roll
 from numpy.polynomial import polynomial
+import copy
 
 class Field:
     def __init__(self, degree = 0, generator = None):
@@ -18,7 +19,10 @@ class Field:
             degree = self._maxAlphaPow - degree
 
         poly = Polynomial(0b1) * degree
-        return poly % self._generator
+        result = poly % self._generator
+        result.trimPoly()
+
+        return result
 
     def getAlphaPower(self, poly):
         return self._alphaPowerMap.get(poly, None)
@@ -35,42 +39,21 @@ class Field:
         return (a1 * a2) %  self._maxAlphaPow
 
     def addAlpha(self, a1, a2):
-        if a1 is None:
+        if a1 is None and a2 is None:
+            return None
+        elif a1 is None:
             return a2
         elif a2 is None:
             return a1
 
         a1Poly = self.getAlpha(a1)
         a2Poly = self.getAlpha(a2)
-        resultPoly = a1Poly + a2Poly
 
+        resultPoly = a1Poly + a2Poly
         return self.getAlphaPower(resultPoly)
 
     def divideAlpha(self, a1, a2):
         return (a1 - a2) %  self._maxAlphaPow
-
-    def subAlpha(self, a1, a2):
-        if a2 is None:
-            return a1
-        elif a1 is None:
-            return self.getAlphaPower(self._getMinusAlpha(a2))
-
-        a1Poly = self.getAlpha(a1)
-        a2Poly = self._getMinusAlpha(a2)
-        resultPoly = a1Poly + a2Poly
-
-        return self.getAlphaPower(resultPoly)
-
-    def _getMinusAlpha(self, degree):
-        alphaPoly = self.getAlpha(degree)
-
-        for p in alphaPoly._poly:
-            if p == 1:
-                p = 0
-            else:
-                p = 1
-
-        return alphaPoly
 
     def getReversedPower(self, power):
         return self._maxAlphaPow - power
@@ -114,37 +97,13 @@ class Polynomial:
     def copy(self):
         return Polynomial(poly=list(self._poly))
 
-    # function returns poly(alpha^alphaPower)
-    def polyValAlpha(self, alphaPower, m):
-        maxAlphaPower = pow(2, m) - 2
-        self._trimPoly(self._poly)
-        poly = self._substitiuteWithAlphaPower(alphaPower, maxAlphaPower)
-        return self._sumAlpha(poly, m)
-
-    def _substitiuteWithAlphaPower(self, alphaPower, maxAlphaPower):
-        maxDegree = self._getMaxDegree(alphaPower, maxAlphaPower)
-        result = [0 for i in range(maxDegree + 1)]
-
-        for degree in range(len(self._poly)):
-            currentIndex = degree
-            newIndex = (alphaPower * degree) % (maxAlphaPower + 1)
-
-            result[newIndex] += self._poly[currentIndex]
-        result = self._normalizePoly(result, 0)
-        self._trimPoly(result)
-        return result
-
     def _getMaxDegree(self, alphaPower, maxAlphaPower):
         if alphaPower * self.degree() > maxAlphaPower:
             return maxAlphaPower
         else:
             return alphaPower * self.degree()
 
-    def _getMinusAlpha(self, field, alphaPower):
-        polyAlpha = field.getAlpha(alphaPower)
-
-    def _sumAlpha(self, poly, m):
-        field = Field(m)
+    def _sumAlpha(self, poly, m, field):
         result = Polynomial(0)
 
         for i in range(len(poly)):
@@ -156,17 +115,17 @@ class Polynomial:
 
     def getAlphaMap(self):
         result = {}
+        self.trimPoly()
+
         for i in range(len(self._poly)):
             if self._poly[i] == 1:
                 result[i] = 0
-            else:
-                result[i] = None
+
         return result
 
     @staticmethod
-    def addUsingAlphaMap(m, map1, map2):
-        field = Field(m)
-        result = map1
+    def addUsingAlphaMap(map1, map2, field):
+        result = copy.deepcopy(map1)
 
         for key, value in map2.iteritems():
             value2 = result.get(key, None)
@@ -175,19 +134,7 @@ class Polynomial:
         return result
 
     @staticmethod
-    def subUsingAlphaMap(m, map1, map2):
-        field = Field(m)
-        result = map1
-
-        for key, value in map2.iteritems():
-            value2 = result.get(key, None)
-            result[key] = field.subAlpha(value, value2)
-
-        return result
-
-    @staticmethod
-    def multiplyUsingAlphaMap(m, map1, map2):
-        field = Field(m)
+    def multiplyUsingAlphaMap(map1, map2, field):
         result = {}
 
         for key1, value1 in map1.iteritems():
@@ -199,9 +146,8 @@ class Polynomial:
         return result
 
     @staticmethod
-    def divideUsingAlphaMap(m, divisor, division):
-        field = Field(m)
-        remainder = divisor
+    def divideUsingAlphaMap(divisor, division, field):
+        remainder = copy.deepcopy(divisor)
         result = {}
         divisionDegree = Polynomial.getMapMaxKey(division)
 
@@ -213,7 +159,7 @@ class Polynomial:
 
             for i in range(divisionDegree + 1):
                 part = field.multiplyAlpha(result[currentDegree], division.get(i, None))
-                remainder[i + currentDegree] = field.subAlpha(
+                remainder[i + currentDegree] = field.addAlpha(
                     remainder.get(i + currentDegree, None), part)
 
             Polynomial._normalizeAlphaMap(remainder)
@@ -230,9 +176,8 @@ class Polynomial:
         return max(m.keys(), key = int)
 
     @staticmethod
-    def getValueUsingAlphaMap(m, polyAlpha, power):
-        field = Field(m)
-        result = 0
+    def getValueUsingAlphaMap(polyAlpha, power, field):
+        result = None
 
         for key, value in polyAlpha.iteritems():
             temp = field.powerAlpha(key, power)
@@ -241,11 +186,6 @@ class Polynomial:
 
         return result
 
-    @staticmethod
-    def getReversedPower(m, power):
-        field = Field(m)
-        return field.getReversedPower(power)
-
     def _normalizePoly(self, poly, expectedSize):
         norm = [abs(int(i)) % 2 for i in poly]
         sizeDiff = expectedSize - len(norm)
@@ -253,9 +193,9 @@ class Polynomial:
             norm += [0]*sizeDiff
         return norm
 
-    def _trimPoly(self, poly):
-        while len(poly) and poly[-1] == 0:
-            poly.pop()
+    def trimPoly(self):
+        while len(self._poly) and self._poly[-1] == 0:
+            self._poly.pop()
 
     def _getPolynomial(self, number):
         reversedDigit = []
