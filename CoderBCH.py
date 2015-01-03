@@ -41,10 +41,10 @@ class CoderBCH:
         raise RuntimeError('Unable to correct errors for input message: ' + str(hex(info)))
 
     def decodeEuclid(self, info):
-        # syndrome = info % self._generator
-        # if syndrome.hammingWeight() == 0:
-        #     print 'No transmission error'
-        #     return info
+        syndrome = info % self._generator
+        if syndrome.hammingWeight() == 0:
+            print 'No transmission error'
+            return info
 
         # assume that generator first minimal poly is m1
         t = self._getPartSyndroms(info , 1)
@@ -79,7 +79,7 @@ class CoderBCH:
         return partSyndroms
 
     def _euclidian(self, T):
-        old_r = Polynomial(1) * (2 * self._t)
+        old_r = Polynomial(1) * (2 * self._t + 1)
         old_r = old_r.getAlphaMap()
         r = copy.deepcopy(T)
         old_t = {}
@@ -164,6 +164,6 @@ if __name__ == '__main__':
     else:
         print 'No match at all'
     print '-----------------------------------------------'
-    decodedMsgEuclid = coder.decodeEuclid(encodedMsg)
+    decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
     print '-----------------------------------------------'
     print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
