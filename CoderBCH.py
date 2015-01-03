@@ -4,14 +4,14 @@ import numpy, copy
 
 class CoderBCH:
 
-    def __init__(self, generator, m, t):
+    def __init__(self, fieldGenerator, generator, m, t):
         self._generator = generator
         self._m = m
         self._n = 2 ** m - 1;
         self._nk = self._generator.degree()
         self._k = self._n - self._nk
         self._t = t
-        self._field = Field(m)
+        self._field = Field(m, fieldGenerator)
 
     def encode(self, info):
         if not self._isEncodePossible(info):
@@ -41,21 +41,17 @@ class CoderBCH:
         raise RuntimeError('Unable to correct errors for input message: ' + str(hex(info)))
 
     def decodeEuclid(self, info):
-        syndrome = info % self._generator
-        if syndrome.hammingWeight() == 0:
-            print 'No transmission error'
-            return info
+        # syndrome = info % self._generator
+        # if syndrome.hammingWeight() == 0:
+        #     print 'No transmission error'
+        #     return info
 
         # assume that generator first minimal poly is m1
-        t = self._getPartSyndroms(syndrome , 1)
+        t = self._getPartSyndroms(info , 1)
         print 'Part syndroms computed'
 
-        B = self._euclidian(t)
+        fi = self._euclidian(t)
         print 'Euclidian algorithm ended'
-
-        delta = {0 : B[0]}
-        (fi, rem) = Polynomial.divideUsingAlphaMap(B, delta, self._field)
-        print 'Error localizator function computed'
 
         print self._getErrorPositions(fi)
 
@@ -68,56 +64,54 @@ class CoderBCH:
 
         return result
 
-    def _getPartSyndroms(self, syndrome, m0):
+    def _getPartSyndroms(self, info, m0):
         partSyndroms = {}
-        polyAlpha = syndrome.getAlphaMap()
+        polyAlpha = info.getAlphaMap()
 
-        for i in range(m0, m0 + 2 * self._t):
-            value = Polynomial.getValueUsingAlphaMap(polyAlpha, i, self._field)
+        for i in range(2 * self._t):
+            alphaPower = i + m0
+            value = Polynomial.getValueUsingAlphaMap(polyAlpha, alphaPower, self._field)
             if value is None:
-                print 'Syndrom %d is 0' % i
+                print 'Syndrom S(alpha^%d) is 0' % alphaPower
             else:
                 partSyndroms[i] = value
 
         return partSyndroms
 
     def _euclidian(self, T):
-        A = [[ 1, 0 ],
-            [ 0, 1 ]]
-        s = Polynomial(1) * (2 * self._t)
-        s = s.getAlphaMap()
-        t = copy.deepcopy(T)
+        old_r = Polynomial(1) * (2 * self._t)
+        old_r = old_r.getAlphaMap()
+        r = copy.deepcopy(T)
+        old_t = {}
+        t = {0 : 0}
+        old_s = { 0 : 0}
+        s = {}
 
-        while Polynomial.getMapMaxKey(t) >= self._t:
-            AOld = copy.deepcopy(A)
+        while Polynomial.getMapMaxKey(r) >= self._t:
+            (result, remainder) = Polynomial.divideUsingAlphaMap(old_r, r, self._field)
+            quotient = result
 
-            (result, remainder) = Polynomial.divideUsingAlphaMap(s, t, self._field)
-            Q = result
-            s = t
-            t = remainder
+            old_r = r
+            r = remainder
 
-            A[0][0] = AOld[1][0]
-            A[0][1] = AOld[1][1]
-            # A[0][0] + A[1][0] * Q
-            A[1][0] = self._getA(AOld[0][0], AOld[1][0], Q)
-            # A[0][1] + A[1][1] * Q
-            A[1][1] = self._getA(AOld[0][1], AOld[1][1], Q)
+            temp = copy.deepcopy(old_s)
+            old_s = s
+            s = Polynomial.multiplyUsingAlphaMap(s, quotient, self._field)
+            s = Polynomial.addUsingAlphaMap(s, temp, self._field)
 
-        return A[1][1]
+            temp = copy.deepcopy(old_t)
+            old_t = t
+            t = Polynomial.multiplyUsingAlphaMap(t, quotient, self._field)
+            t = Polynomial.addUsingAlphaMap(t, temp, self._field)
 
-    def _getA(self, a0, a1, Q):
-        if a0 == 0 and a1 == 1:
-            return Q
-        if a0 == 1 and a1 == 0:
-            return 1
-        if a0 == 1:  # a1 == alphaMap
-            resultQ = Polynomial.multiplyUsingAlphaMap(Q, a1, self._field)
-            return Polynomial.addUsingAlphaMap(resultQ, {0 : 0}, self._field) # <- 1
-        else: # a0 == alphaMap and a1 == alphaMap
-            resultQ = Polynomial.multiplyUsingAlphaMap(Q, a1, self._field)
-            return Polynomial.addUsingAlphaMap(resultQ, a0, self._field)
+        # print "Bezout coefficients:"
+        # print old_s, old_t
+        # print "greatest common divisor:"
+        # print old_r
+        # print "quotients by the gcd:"
+        # print t, s
 
-
+        return t
 
     def __repr__(self):
         return """Coder parameters:
@@ -145,9 +139,10 @@ def addNoise(message, maxErrors, generatorDegree):
 if __name__ == '__main__':
     t = 12
     m = 8
+    fieldGen = Polynomial(0435)
     gen = Polynomial(07500415510075602551574724514601)
     info = Polynomial(0b101011100110101110011010111001101011100110101110011010111001010)
-    coder = CoderBCH(gen, m, t)
+    coder = CoderBCH(fieldGen, gen, m, t)
     print coder
     print 'INFO: ' + str(info)
     encodedMsg = coder.encode(info)
@@ -169,6 +164,6 @@ if __name__ == '__main__':
     else:
         print 'No match at all'
     print '-----------------------------------------------'
-    decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    decodedMsgEuclid = coder.decodeEuclid(encodedMsg)
     print '-----------------------------------------------'
     print 'DECODED EUCLID: ' + str(decodedMsgEuclid)

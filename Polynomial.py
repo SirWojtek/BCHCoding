@@ -48,8 +48,8 @@ class Field:
 
         a1Poly = self.getAlpha(a1)
         a2Poly = self.getAlpha(a2)
-
         resultPoly = a1Poly + a2Poly
+
         return self.getAlphaPower(resultPoly)
 
     def divideAlpha(self, a1, a2):
@@ -61,7 +61,7 @@ class Field:
     # W razie potrzeby wiekszych: http://theory.cs.uvic.ca/gen/poly.html
     def _createGenerator(self, fieldDegree):
         minimalPolys = [0b11, 0b111, 0b1011, 0b10011, 0b100101, 0b1000011,
-                        0b10000011, 0b101101001, 0b1000000011, 0b10000001001]
+                        0211, 0435, 0b1000000011, 0b10000001001]
         try:
             return Polynomial(minimalPolys[fieldDegree-1])
         except IndexError:
@@ -70,7 +70,10 @@ class Field:
     def _getPowerMap(self):
         result = {}
         for i in range(self._maxAlphaPow):
-            result[self.getAlpha(i)] = i
+            alphaPoly = self.getAlpha(i)
+            if result.get(alphaPoly, None) is not None:
+                raise RuntimeError("Incorrect primitive polynomial given")
+            result[alphaPoly] = i
         return result
 
 class Polynomial:
@@ -148,17 +151,21 @@ class Polynomial:
     @staticmethod
     def divideUsingAlphaMap(divisor, division, field):
         remainder = copy.deepcopy(divisor)
+        Polynomial._normalizeAlphaMap(remainder)
+        div = copy.deepcopy(division)
+        Polynomial._normalizeAlphaMap(div)
+
         result = {}
-        divisionDegree = Polynomial.getMapMaxKey(division)
+        divisionDegree = Polynomial.getMapMaxKey(div)
 
         while remainder and Polynomial.getMapMaxKey(remainder) - divisionDegree >= 0:
             remainderDegree = Polynomial.getMapMaxKey(remainder)
             currentDegree = remainderDegree - divisionDegree
             result[currentDegree] = field.divideAlpha(remainder[remainderDegree],
-                division[divisionDegree])
+                div[divisionDegree])
 
             for i in range(divisionDegree + 1):
-                part = field.multiplyAlpha(result[currentDegree], division.get(i, None))
+                part = field.multiplyAlpha(result[currentDegree], div.get(i, None))
                 remainder[i + currentDegree] = field.addAlpha(
                     remainder.get(i + currentDegree, None), part)
 
@@ -301,9 +308,3 @@ if __name__ == '__main__':
     print a/2
     print a%b
     print a*b
-
-    # print '----------------------'
-
-
-    # f = Field(8)
-    # f.getAlphaPower(c)
