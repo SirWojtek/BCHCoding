@@ -41,6 +41,7 @@ class CoderBCH:
         raise RuntimeError('Unable to correct errors for input message: ' + str(hex(info)))
 
     def decodeEuclid(self, info):
+        info = copy.deepcopy(info)
         syndrome = info % self._generator
         if syndrome.hammingWeight() == 0:
             print 'No transmission error'
@@ -53,9 +54,20 @@ class CoderBCH:
         fi = self._euclidian(t)
         print 'Euclidian algorithm ended'
 
-        print self._getErrorPositions(fi)
+        errorPos = self._getErrorPositions(fi)
+        print 'Error positions: ' + str(errorPos)
+
+        encodedMessage = self._correctErrors(info, errorPos) / self._nk
+        encodedMessage.trimPoly()
+        return encodedMessage
+
+    def _correctErrors(self, message, errorPositions):
+        for pos in errorPositions:
+            message[pos] = int(not(message[pos]))
+        return message
 
     def _getErrorPositions(self, fi):
+        fi = copy.deepcopy(fi)
         result = []
 
         for i in range(self._n):
@@ -167,3 +179,8 @@ if __name__ == '__main__':
     decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
     print '-----------------------------------------------'
     print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
+
+    if decodedMsgEuclid == info:
+        print 'INFO and DECODED messages match!'
+    else:
+        print 'No match at all'
