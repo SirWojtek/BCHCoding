@@ -59,7 +59,7 @@ class CoderBCH:
 
         encodedMessage = self._correctErrors(info, errorPos) / self._nk
         encodedMessage.trimPoly()
-        return encodedMessage
+        return encodedMessage, errorPos
 
     def _correctErrors(self, message, errorPositions):
         for pos in errorPositions:
@@ -146,7 +146,17 @@ def addNoise(message, maxErrors, generatorDegree):
     print 'NOISE_POSITIONS' + str(positions)
     for position in positions:
         poly[position] = int(not(poly[position]))
-    return poly
+    return poly, positions
+
+def isEuclidianResultCorrect(noisePositions, correctedPositions):
+    big = sorted(correctedPositions)
+    small = sorted(noisePositions)
+
+    for a in small:
+        if a not in big:
+            return False
+
+    return True
 
 if __name__ == '__main__':
     t = 12
@@ -160,7 +170,7 @@ if __name__ == '__main__':
     encodedMsg = coder.encode(info)
     print 'ENCODED: ' + str(encodedMsg)
     #Have some problem with generate proper noise.
-    noisedMsg = addNoise(encodedMsg, t, gen.degree())
+    noisedMsg, noisePositions = addNoise(encodedMsg, t, gen.degree())
     #noisedMsg = encodedMsg
     print 'NOISED: ' + str(noisedMsg)
     decodedMsg = Polynomial()
@@ -176,11 +186,11 @@ if __name__ == '__main__':
     else:
         print 'No match at all'
     print '-----------------------------------------------'
-    decodedMsgEuclid = coder.decodeEuclid(noisedMsg)
+    decodedMsgEuclid, correctedPositions = coder.decodeEuclid(noisedMsg)
     print '-----------------------------------------------'
     print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
 
-    if decodedMsgEuclid == info:
+    if isEuclidianResultCorrect(noisePositions, correctedPositions):
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
