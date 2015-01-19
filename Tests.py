@@ -1,3 +1,4 @@
+#!/usr/bin/python
 from CoderBCH import CoderBCH
 from Polynomial import Polynomial
 import numpy
@@ -60,7 +61,7 @@ def addNoise(message, numberOfErrors, errorsDelta, higherDelta=None):
         positions = moveRagne(positions, len(message), errorsDelta)
     for position in positions:
         poly[position] = int(not(poly[position]))
-    return poly
+    return poly, positions
 
 def toCsv(path, result):
     file = open(path, 'w+')
@@ -88,7 +89,41 @@ def testWithChangingT(code, numberOfTests=1):
                 results[t].append(int(decodedMsg == code['info']))
     return results
 
+def isEuclidianResultCorrect(noisePositions, correctedPositions):
+    big = sorted(correctedPositions)
+    small = sorted(noisePositions)
+
+    for a in small:
+        if a not in big:
+            return False
+    return True
+
+def testEuclidianWithChangingT(code, numberOfTests=1):
+    results = dict()
+    coder = CoderBCH(code['fieldGen'], code['codeGen'], code['m'], code['t'])
+    encodedMsg = coder.encode(code['info'])
+    for t in range(1,code['t'] + 2):
+        results[t] = list()
+        for i in range(numberOfTests):
+            #nosiedMsg = addNoise(encodedMsg, t, coder._nk, higherDelta=True)
+            noisedMsg, noisePositions = addNoise(encodedMsg, t, coder._nk)
+            try:
+                decodedMsg, correctedPositions = coder.decodeEuclid(noisedMsg)
+            except RuntimeError:
+                results[t].append(0)
+            else:
+                results[t].append(isEuclidianResultCorrect(noisePositions, correctedPositions))
+    return results
+
+
 if __name__ == '__main__':
+    # results = testEuclidianWithChangingT(codes[0])
+    # toCsv('resultEuclidian.csv', results)
+    # results = testEuclidianWithChangingT(codes[1])
+    # toCsv('resultEuclidian2.csv', results)
+    # results = testEuclidianWithChangingT(codes[2])
+    # toCsv('resultEuclidian3.csv', results)
+
     results = testWithChangingT(codes[0], 100)
     toCsv('result.csv', results)
     results = testWithChangingT(codes[1], 100)

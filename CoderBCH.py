@@ -148,16 +148,6 @@ def addNoise(message, maxErrors, generatorDegree):
         poly[position] = int(not(poly[position]))
     return poly, positions
 
-def isEuclidianResultCorrect(noisePositions, correctedPositions):
-    big = sorted(correctedPositions)
-    small = sorted(noisePositions)
-
-    for a in small:
-        if a not in big:
-            return False
-
-    return True
-
 if __name__ == '__main__':
     t = 12
     m = 8
@@ -190,7 +180,7 @@ if __name__ == '__main__':
     print '-----------------------------------------------'
     print 'DECODED EUCLID: ' + str(decodedMsgEuclid)
 
-    if isEuclidianResultCorrect(noisePositions, correctedPositions):
+    if decodedMsgEuclid == info:
         print 'INFO and DECODED messages match!'
     else:
         print 'No match at all'
