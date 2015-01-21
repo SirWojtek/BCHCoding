@@ -105,11 +105,12 @@ def testEuclidianWithChangingT(code, numberOfTests=1):
     for t in range(1,code['t'] + 2):
         results[t] = list()
         for i in range(numberOfTests):
+            print 't = %d  i = %d' % (t,i)
             #nosiedMsg = addNoise(encodedMsg, t, coder._nk, higherDelta=True)
             noisedMsg, noisePositions = addNoise(encodedMsg, t, coder._nk)
             try:
                 decodedMsg, correctedPositions = coder.decodeEuclid(noisedMsg)
-            except RuntimeError:
+            except :
                 results[t].append(0)
             else:
                 results[t].append(isEuclidianResultCorrect(noisePositions, correctedPositions))
@@ -117,11 +118,11 @@ def testEuclidianWithChangingT(code, numberOfTests=1):
 
 
 if __name__ == '__main__':
-    # results = testEuclidianWithChangingT(codes[0])
+    # results = testEuclidianWithChangingT(codes[0], 10)
     # toCsv('resultEuclidian.csv', results)
-    # results = testEuclidianWithChangingT(codes[1])
+    # results = testEuclidianWithChangingT(codes[1], 10)
     # toCsv('resultEuclidian2.csv', results)
-    # results = testEuclidianWithChangingT(codes[2])
+    # results = testEuclidianWithChangingT(codes[2], 10)
     # toCsv('resultEuclidian3.csv', results)
 
     results = testWithChangingT(codes[0], 100)
