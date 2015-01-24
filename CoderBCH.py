@@ -87,11 +87,10 @@ class CoderBCH:
                 print 'Syndrom S(alpha^%d) is 0' % alphaPower
             else:
                 partSyndroms[i] = value
-
         return partSyndroms
 
     def _euclidian(self, T):
-        old_r = Polynomial(1) * (2 * self._t + 1)
+        old_r = Polynomial(1) * (2 * self._t)
         old_r = old_r.getAlphaMap()
         r = copy.deepcopy(T)
         old_t = {}
@@ -121,7 +120,7 @@ class CoderBCH:
         # print "greatest common divisor:"
         # print old_r
         # print "quotients by the gcd:"
-        # print t, s
+        # print t,
 
         return t
 
@@ -135,33 +134,54 @@ n - k:\t\t%d
 t:\t\t%d
 """ % (int(self._generator), self._m, self._n, self._k, self._nk, self._t)
 
-def addNoise(message, maxErrors, generatorDegree):
+def randErrorPositions(range, numberOfErrors):
+    if range < numberOfErrors:
+        raise RuntimeError("Range value cant be bigger then number of errors!")
+    positions = list()
+    diff = numberOfErrors
+    while diff > 0:
+        positions += list(numpy.random.randint(range, size=diff))
+        positions = list(set(positions))
+        diff = numberOfErrors - len(positions)
+    return sorted(positions)
+
+def moveRagne(positions, messageLen, errorsDelta):
+    temp = list(positions)
+    if len(positions) == 1:
+        return temp
+    diff = temp[-1] - temp[0]
+    while diff <= errorsDelta:
+        if temp[-1] < (messageLen-1):
+            temp[-1] += 1
+        if temp[0] > 0:
+            temp[0] -= 1
+        diff = temp[-1] - temp[0]
+    return temp
+
+def addNoise(message, numberOfErrors, errorsDelta, higherDelta=None):
     poly = message.copy()
-    positions = numpy.random.randint(generatorDegree, size=maxErrors)
-    shift = numpy.random.randint(len(message) - generatorDegree)
-    positions = sorted(list(set(positions)))
-    print len(positions)
+    positions = randErrorPositions(errorsDelta, numberOfErrors)
+    shift = numpy.random.randint(len(message) - errorsDelta)
     for i, pos in enumerate(positions):
         positions[i]  = pos + shift
-    print 'NOISE_POSITIONS' + str(positions)
+    if higherDelta is not None:
+        positions = moveRagne(positions, len(message), errorsDelta)
     for position in positions:
         poly[position] = int(not(poly[position]))
     return poly, positions
 
 if __name__ == '__main__':
-    t = 12
+    t = 29
     m = 8
     fieldGen = Polynomial(0435)
-    gen = Polynomial(07500415510075602551574724514601)
-    info = Polynomial(0b1010111001101011100110101110010101011101011100111011011011010100101011111101101010111001101011100101001010111100110101010101111001101011100110101110011010111001010)
+    gen = Polynomial(024024710520644321515554172112331163205444250362557643221706035)
+    info = Polynomial(0b10101110010100101011110011010101010111100110101110011010111001101011100)
     coder = CoderBCH(fieldGen, gen, m, t)
     print coder
     print 'INFO: ' + str(info)
     encodedMsg = coder.encode(info)
     print 'ENCODED: ' + str(encodedMsg)
-    #Have some problem with generate proper noise.
-    noisedMsg, noisePositions = addNoise(encodedMsg, t, gen.degree())
-    #noisedMsg = encodedMsg
+    noisedMsg = Polynomial(poly=[0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1])
     print 'NOISED: ' + str(noisedMsg)
     decodedMsg = Polynomial()
     try:
